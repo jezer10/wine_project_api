@@ -1,11 +1,14 @@
-from typing import List
+from typing import List, Optional
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from prediction_tree_model import predict_by_tree_model, load_test_data
 from pydantic import BaseModel
+import uvicorn
 
 app = FastAPI()
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="templates",
+                            variable_start_string='[[',
+                            variable_end_string=']]')
 
 
 @app.get("/")
@@ -25,7 +28,7 @@ class WineDTO(BaseModel):
     pH: float
     sulphates: float
     alcohol: float
-    color: str
+    color: Optional[str]
 
 
 class WinesDTO(BaseModel):
@@ -47,3 +50,7 @@ async def predict_dto(wines: WinesDTO):
 @app.get("/hello/{name}")
 async def say_hello(name: str):
     return {"message": f"Hello {name}"}
+
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", port=5000, log_level="info")
