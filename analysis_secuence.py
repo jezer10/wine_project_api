@@ -5,21 +5,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
-from sklearn.datasets import make_blobs
+from sklearn.neighbors import NearestNeighbors
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import scale
 from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, dendrogram
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from pyclustertend import hopkins
 from sklearn.metrics import silhouette_samples, silhouette_score, classification_report, confusion_matrix, \
     ConfusionMatrixDisplay
-from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeClassifier
-from sklearn import tree
-import graphviz
-from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier
 
 sns.set(
     rc={
@@ -29,20 +21,9 @@ sns.set(
 
 sns.set_style("whitegrid")
 
-dataset = pd.read_csv("./datasets/winequality.csv")
-dataset.head()
-
-dataset.shape
-
-dataset.info()
-
-dataset.describe()
-
-dataset.isna().sum()
-
-dataset.empty
-
-msno.matrix(dataset)
+dataset = pd.read_csv("datasets/wine_quality.csv")
+def graph_missingness_matrix():
+    msno.matrix(dataset)
 
 for c in dataset.columns:
     if c != "good" and c != "color":
@@ -71,24 +52,9 @@ plt.title("Correlation Matrix")
 plt.show()
 
 dataset_numcols.drop(["good", "quality"], axis=1, inplace=True)
-scaler = StandardScaler()
-scaled_dataset = pd.DataFrame(scaler.fit_transform(dataset_numcols), columns=dataset_numcols.columns)
-print(scaled_dataset.shape)
-print(scaled_dataset.head())
+scaled_dataset = pd.DataFrame(StandardScaler().fit_transform(dataset_numcols), columns=dataset_numcols.columns)
 
 scaled_dataset_for_predict = pd.concat([scaled_dataset, dataset["color"]], axis=1)
-
-wcss = []
-for i in range(1, 11):
-    kmeans = KMeans(n_clusters=i, n_init="auto")
-    kmeans.fit(dataset_numcols)
-    wcss.append(kmeans.inertia_)
-
-plt.plot(range(1, 11), wcss, marker='o', linestyle='-', color='blue')
-plt.title('The Elbow Method')
-plt.xlabel('Number of clusters')
-plt.ylabel('WCSS')
-plt.show()
 
 km_dw_numcols = KMeans(n_clusters=2, n_init=20).fit(dataset_numcols)
 print(km_dw_numcols)
@@ -108,8 +74,6 @@ random_dataset = dataset_numcols.apply(lambda x: np.random.uniform(min(x), max(x
 random_dataset.head()
 
 scaled_random_dataset = pd.DataFrame(scale(random_dataset))
-print(scaled_random_dataset.shape)
-scaled_random_dataset.head()
 
 scaled_dw_plot = PCA(n_components=2).fit_transform(scaled_dataset)
 scaled_rdw_plot = PCA(n_components=2).fit_transform(scaled_random_dataset)
@@ -123,16 +87,11 @@ plt.title("PCA - Random Data")
 plt.tight_layout()
 plt.show()
 
-distance_matrix_dw = squareform(pdist(dataset_numcols)) ** 2
-distance_matrix_rdw = squareform(pdist(random_dataset)) ** 2
 
-# Realizar el agrupamiento jerárquico para el conjunto de datos original
-hclust_dw = linkage(distance_matrix_dw, method='ward')
+hclust_dw = linkage(squareform(pdist(dataset_numcols)) ** 2, method='ward')
 
-# Realizar el agrupamiento jerárquico para el conjunto de datos aleatorio
-hclust_rdw = linkage(distance_matrix_rdw, method='ward')
+hclust_rdw = linkage(squareform(pdist(random_dataset)) ** 2, method='ward')
 
-# Graficar los dendrogramas
 plt.subplot(2, 1, 1)
 dend_dw = dendrogram(hclust_dw, no_labels=True)
 plt.title("Hierarchical Clustering - Wine Quality Data")
@@ -144,95 +103,63 @@ plt.title("Hierarchical Clustering - Random Data")
 plt.tight_layout()
 plt.show()
 
-# Calcular la estadística de Hopkins para el conjunto de datos original
-hop_stat_dw = hopkins(scaled_dataset, sampling_size=scaled_dataset.shape[0] - 1)
+
+def hopkins(data):
+    nbrs = NearestNeighbors(n_neighbors=1).fit(data)
+    distances, _ = nbrs.kneighbors(data)
+
+    random_data = np.random.uniform(low=min(data), high=max(data), size=data.shape)
+    random_nbrs = NearestNeighbors(n_neighbors=1).fit(random_data)
+    random_distances, _ = random_nbrs.kneighbors(random_data)
+
+    hopkins_statistic = np.sum(distances) / (np.sum(distances) + np.sum(random_distances))
+    return hopkins_statistic
+
+
+hop_stat_dw = hopkins(scaled_dataset)
 print("Hopkins Statistic - Wine Quality Data:", hop_stat_dw)
 
-# Calcular la estadística de Hopkins para el conjunto de datos aleatorio
-hop_stat_rdw = hopkins(scaled_random_dataset, sampling_size=scaled_random_dataset.shape[0] - 1)
+hop_stat_rdw = hopkins(scaled_random_dataset)
 print("Hopkins Statistic - Random Data:", hop_stat_rdw)
 
 silhouette_dw = silhouette_samples(distance_matrix_dw, km_dw_numcols.labels_)
 silhouette_avg_dw = silhouette_score(distance_matrix_dw, km_dw_numcols.labels_)
 print("Average Silhouette Score - Wine Quality Data:", silhouette_avg_dw)
 
-# Graficar el coeficiente de silueta
-n_clusters = len(np.unique(km_dw_numcols.labels_))
-y_lower = 10
-fig, ax = plt.subplots()
-for i in range(n_clusters):
-    cluster_silhouette_values = silhouette_dw[km_dw_numcols.labels_ == i]
-    cluster_silhouette_values.sort()
-    size_cluster_i = cluster_silhouette_values.shape[0]
-    y_upper = y_lower + size_cluster_i
-    color = plt.cm.get_cmap("tab10")(i)
-    ax.fill_betweenx(np.arange(y_lower, y_upper),
-                     0, cluster_silhouette_values,
-                     facecolor=color, edgecolor=color, alpha=0.7)
-    ax.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
-    y_lower = y_upper + 10
 
-ax.set_xlabel("Silhouette coefficient")
-ax.set_ylabel("Cluster label")
-ax.axvline(x=silhouette_avg_dw, color="red", linestyle="--")
-ax.set_yticks([])
-plt.title("Silhouette Analysis - Wine Quality Data")
-plt.show()
+def graph_elbow():
+    wcss = []
+    for i in range(1, 11):
+        kmeans = KMeans(n_clusters=i, n_init="auto")
+        kmeans.fit(dataset_numcols)
+        wcss.append(kmeans.inertia_)
 
-X = scaled_dataset_for_predict.drop("color", axis=1)  # Variables predictoras
-y = scaled_dataset_for_predict["color"]  # Variable objetivo
-
-# Realizar la división
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+    plt.plot(range(1, 11), wcss, marker='o', linestyle='-', color='blue')
+    plt.title('The Elbow Method')
+    plt.xlabel('Number of clusters')
+    plt.ylabel('WCSS')
+    plt.show()
 
 
+def graph_silhouette():
+    n_clusters = len(np.unique(km_dw_numcols.labels_))
+    y_lower = 10
+    fig, ax = plt.subplots()
+    for i in range(n_clusters):
+        cluster_silhouette_values = silhouette_dw[km_dw_numcols.labels_ == i]
+        cluster_silhouette_values.sort()
+        size_cluster_i = cluster_silhouette_values.shape[0]
+        y_upper = y_lower + size_cluster_i
+        color = plt.cm.get_cmap("tab10")(i)
+        ax.fill_betweenx(np.arange(y_lower, y_upper),
+                         0, cluster_silhouette_values,
+                         facecolor=color, edgecolor=color, alpha=0.7)
+        ax.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
+        y_lower = y_upper + 10
 
-# Crear el modelo de SVM
-svm_model = SVC(kernel='rbf')
-
-# Ajustar el modelo con los datos de entrenamiento
-svm_model.fit(X_train, y_train)
-
-# Imprimir un resumen del modelo
-print(svm_model)
-
-# Realizar predicciones en el conjunto de prueba
-svm_predictions = svm_model.predict(X_test)
-
-# Imprimir el informe de clasificación
-print(classification_report(y_test, svm_predictions))
-
-# Calcular la matriz de confusión
-svm_confusion_matrix = confusion_matrix(y_test, svm_predictions)
-
-# Visualizar la matriz de confusión
-disp = ConfusionMatrixDisplay(confusion_matrix=svm_confusion_matrix, display_labels=svm_model.classes_)
-disp.plot()
-
-# Crear el modelo de Random Forest
-randomforest_model = RandomForestClassifier()
-
-# Ajustar el modelo con los datos de entrenamiento
-randomforest_model.fit(X_train, y_train)
-
-# Visualizar la importancia de las variables
-importance = randomforest_model.feature_importances_
-print(importance)
-
-# Realizar predicciones en el conjunto de prueba
-randomforest_predictions = randomforest_model.predict(X_test)
-
-# Imprimir el informe de clasificación
-print(classification_report(y_test, randomforest_predictions))
-
-# Calcular la matriz de confusión
-randomforest_confusion_matrix = confusion_matrix(y_test, randomforest_predictions)
-
-# Visualizar la matriz de confusión
-disp = ConfusionMatrixDisplay(confusion_matrix=randomforest_confusion_matrix,
-                              display_labels=randomforest_model.classes_)
-disp.plot()
-
-scaled_dataset_for_predict.drop("color", axis=1)
-
-scaled_dataset_for_predict.iloc[0:1, ]
+    ax.set_xlabel("Silhouette coefficient")
+    ax.set_ylabel("Cluster label")
+    ax.axvline(x=silhouette_avg_dw, color="red", linestyle="--")
+    ax.set_yticks([])
+    plt.title("Silhouette Analysis - Wine Quality Data")
+    plt.show()
