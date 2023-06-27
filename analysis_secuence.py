@@ -78,9 +78,10 @@ def pca_graph():
     plt.title('Análisis de Clústeres')
     plt.savefig(buffer, format='svg')
     buffer.seek(0)
-    response = Response(content=buffer.getvalue(), media_type='image/svg+xml')
-    response.headers['Content-Disposition'] = 'attachment; filename=plot.svg'
+    response = Response(content=buffer.getvalue(), media_type='image/jpeg')
+    response.headers['Content-Disposition'] = 'attachment; filename=plot.jpg'
     return response
+
 
 def scatter_graph():
     scaled_dw_plot = PCA(n_components=2).fit_transform(scaled_dataset)
