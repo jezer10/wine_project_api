@@ -29,9 +29,13 @@ async def generate_scatter_graph():
 @app.get('/graph/hierarchical')
 async def generate_hierarchical_graph():
     return hierarchical_graph()
+
+
 @app.get('/graph/elbow')
 async def generate_elbow_graph():
     return graph_elbow()
+
+
 @app.get("/predict/svm")
 async def predict_svm(wines: WinesDTO):
     return predict_by_svm(wines)
@@ -45,7 +49,6 @@ async def predict_tree(wines: WinesDTO):
 @app.get("/predict/forest")
 async def predict_tree(wines: WinesDTO):
     return predict_by_random_forest(wines)
-
 
 
 if __name__ == "__main__":

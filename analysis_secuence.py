@@ -12,9 +12,10 @@ from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, dendrogram
 from io import BytesIO
 import base64
-from fastapi.responses import StreamingResponse,Response
+from fastapi.responses import StreamingResponse, Response
 from sklearn.metrics import silhouette_samples, silhouette_score, classification_report, confusion_matrix, \
     ConfusionMatrixDisplay
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 buffer = BytesIO()
 
@@ -66,62 +67,84 @@ def graph_correlation_matrix():
     cmap = sns.diverging_palette(230, 20, as_cmap=True)
     sns.heatmap(correlation_matrix, mask=mask, cmap=cmap, annot=True, fmt=".2f", center=0, cbar_kws={"shrink": .5})
     plt.title("Correlation Matrix")
-    plt.show()
 
 
 def pca_graph():
     pca = PCA(n_components=2)
     reduced_pca_components = pca.fit_transform(scaled_dataset)
-    plt.scatter(reduced_pca_components[:, 0], reduced_pca_components[:, 1], c=km_dw_numcols.labels_, cmap='viridis')
-    plt.xlabel('Componente Principal 1')
-    plt.ylabel('Componente Principal 2')
-    plt.title('Análisis de Clústeres')
-    plt.savefig(buffer, format='svg')
+    fig, ax = plt.subplots()
+    ax.scatter(reduced_pca_components[:, 0], reduced_pca_components[:, 1], c=km_dw_numcols.labels_, cmap='viridis')
+    ax.set_xlabel('Componente Principal 1')
+    ax.set_ylabel('Componente Principal 2')
+    ax.set_title('Análisis de Clústeres')
+    FigureCanvas(fig).print_png(buffer)
     buffer.seek(0)
-    response = Response(content=buffer.getvalue(), media_type='image/jpeg')
-    response.headers['Content-Disposition'] = 'attachment; filename=plot.jpg'
-    return response
+    base64_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    plt.close(fig)
+    return StreamingResponse(BytesIO(base64.b64decode(base64_image)), media_type='image/png')
+
+
+def graph_elbow():
+    wcss = []
+    for i in range(1, 11):
+        kmeans = KMeans(n_clusters=i, n_init="auto")
+        kmeans.fit(dataset_numcols)
+        wcss.append(kmeans.inertia_)
+    fig, ax = plt.subplots()
+    ax.plot(range(1, 11), wcss, marker='o', linestyle='-', color='blue')
+    ax.set_xlabel('Number of clusters')
+    ax.set_ylabel('WCSS')
+    ax.set_title('The Elbow Method')
+    FigureCanvas(fig).print_png(buffer)
+    buffer.seek(0)
+    base64_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    plt.close(fig)
+    return StreamingResponse(BytesIO(base64.b64decode(base64_image)), media_type='image/png')
 
 
 def scatter_graph():
     scaled_dw_plot = PCA(n_components=2).fit_transform(scaled_dataset)
-    plt.scatter(scaled_dw_plot[:, 0], scaled_dw_plot[:, 1], c=dataset["color"])
-    plt.title("PCA - Wine Quality Data")
-    plt.savefig(buffer, format='png')
+    fig, ax = plt.subplots()
+    ax.scatter(scaled_dw_plot[:, 0], scaled_dw_plot[:, 1], c=dataset["color"])
+    ax.set_title("PCA - Wine Quality Data")
+    FigureCanvas(fig).print_png(buffer)
     buffer.seek(0)
     base64_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    plt.close(fig)
     return StreamingResponse(BytesIO(base64.b64decode(base64_image)), media_type='image/png')
 
 
 def scatter_random_graph():
     scaled_rdw_plot = PCA(n_components=2).fit_transform(scaled_random_dataset)
-    plt.scatter(scaled_rdw_plot[:, 0], scaled_rdw_plot[:, 1], c=dataset["color"])
-    plt.title("PCA - Random Data")
-    plt.savefig(buffer, format='png')
-    buffer.seek(0)
+    fig, ax = plt.subplot()
+    ax.scatter(scaled_rdw_plot[:, 0], scaled_rdw_plot[:, 1], c=dataset["color"])
+    ax.title("PCA - Random Data")
+    FigureCanvas(fig).print_png(buffer)
     base64_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    plt.close(fig)
     return StreamingResponse(BytesIO(base64.b64decode(base64_image)), media_type='image/png')
 
 
 def hierarchical_graph():
     hclust_dw = linkage(distance_matrix_dw, method='ward')
-
-    hclust_rdw = linkage(distance_matrix_rdw, method='ward')
-
-    plt.subplot(2, 1, 1)
-    dend_dw = dendrogram(hclust_dw, no_labels=True)
+    dendrogram(hclust_dw, no_labels=True)
     plt.title("Hierarchical Clustering - Wine Quality Data")
-
-    plt.subplot(2, 1, 2)
-    dend_rdw = dendrogram(hclust_rdw, no_labels=True)
-    plt.title("Hierarchical Clustering - Random Data")
-
-    plt.tight_layout()
-    plt.savefig(buffer, format='png')
-    buffer.seek(0)
-
+    FigureCanvas(plt).print_png(buffer)
     base64_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    plt.close(plt)
     return StreamingResponse(BytesIO(base64.b64decode(base64_image)), media_type='image/png')
+
+
+def hierarchical_random_graph():
+    hclust_rdw = linkage(distance_matrix_rdw, method='ward')
+    dendrogram(hclust_rdw, no_labels=True)
+    plt.title("Hierarchical Clustering - Random Data")
+    plt.tight_layout()
+    FigureCanvas(plt).print_png(buffer)
+    base64_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    plt.close(plt)
+    return StreamingResponse(BytesIO(base64.b64decode(base64_image)), media_type='image/png')
+
 
 
 def hopkins(data):
@@ -142,24 +165,6 @@ def perform_hopkin_statistic():
 
     hop_stat_rdw = hopkins(scaled_random_dataset)
     print("Hopkins Statistic - Random Data:", hop_stat_rdw)
-
-
-def graph_elbow():
-    wcss = []
-    for i in range(1, 11):
-        kmeans = KMeans(n_clusters=i, n_init="auto")
-        kmeans.fit(dataset_numcols)
-        wcss.append(kmeans.inertia_)
-
-    plt.plot(range(1, 11), wcss, marker='o', linestyle='-', color='blue')
-    plt.title('The Elbow Method')
-    plt.xlabel('Number of clusters')
-    plt.ylabel('WCSS')
-    plt.savefig(buffer, format='png')
-    buffer.seek(0)
-
-    base64_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
-    return StreamingResponse(BytesIO(base64.b64decode(base64_image)), media_type='image/png')
 
 
 def graph_silhouette():
@@ -185,9 +190,9 @@ def graph_silhouette():
     ax.set_ylabel("Cluster label")
     ax.axvline(x=silhouette_avg_dw, color="red", linestyle="--")
     ax.set_yticks([])
-    plt.title("Silhouette Analysis - Wine Quality Data")
-    plt.savefig(buffer, format='png')
-    buffer.seek(0)
-
+    ax.set_title("Silhouette Analysis - Wine Quality Data")
+    FigureCanvas(fig).print_png(buffer)
     base64_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    plt.close(fig)
     return StreamingResponse(BytesIO(base64.b64decode(base64_image)), media_type='image/png')
+
