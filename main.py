@@ -1,8 +1,7 @@
-from typing import List, Optional
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from prediction_models import predict_by_tree_model, predict_by_svm, predict_by_random_forest
-from pydantic import BaseModel
+from analysis_secuence import graph_elbow, hierarchical_graph, scatter_graph
 import uvicorn
 from wine_dto import WinesDTO
 
@@ -12,6 +11,17 @@ templates = Jinja2Templates(directory="templates",
                             variable_end_string=']]')
 
 
+@app.get('/graph/scatter')
+async def generate_scatter_graph():
+    return scatter_graph()
+
+
+@app.get('/graph/hierarchical')
+async def generate_hierarchical_graph():
+    return hierarchical_graph()
+@app.get('/graph/elbow')
+async def generate_elbow_graph():
+    return graph_elbow()
 @app.get("/predict/svm")
 async def predict_svm(wines: WinesDTO):
     return predict_by_svm(wines)

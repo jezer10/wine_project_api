@@ -1,0 +1,43 @@
+# Archivos de configuración
+*.ini
+*.cfg
+*.conf
+
+# Bytecode de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Entorno virtual de Python (por ejemplo, virtualenv, pipenv, venv)
+venv/
+env/
+*.env
+
+# Logs y archivos de registro
+*.log
+log/
+logs/
+
+# Archivos de caché
+.cache/
+
+# Archivos generados por el sistema operativo
+.DS_Store
+Thumbs.db
+
+# Carpeta de compilación
+build/
+
+# Distribución de paquetes
+dist/
+
+# Documentación generada automáticamente
+docs/_build/
+
+# Dependencias
+*.egg-info/
+*.egg
+*.whl
+
+# Archivos locales de desarrollo
+.local/

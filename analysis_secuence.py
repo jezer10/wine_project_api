@@ -10,8 +10,13 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import scale
 from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, dendrogram
+from io import BytesIO
+import base64
+from fastapi.responses import StreamingResponse
 from sklearn.metrics import silhouette_samples, silhouette_score, classification_report, confusion_matrix, \
     ConfusionMatrixDisplay
+
+buffer = BytesIO()
 
 sns.set(
     rc={
@@ -21,87 +26,96 @@ sns.set(
 
 sns.set_style("whitegrid")
 
-dataset = pd.read_csv("datasets/wine_quality.csv")
+dataset = pd.read_csv("data/wine_quality.csv")
+dataset_numcols = dataset.select_dtypes(include=[float, int])
+correlation_matrix = dataset_numcols.corr()
+dataset_numcols.drop(["good", "quality"], axis=1, inplace=True)
+km_dw_numcols = KMeans(n_clusters=2, n_init=20).fit(dataset_numcols)
+scaled_dataset = pd.DataFrame(StandardScaler().fit_transform(dataset_numcols), columns=dataset_numcols.columns)
+scaled_dataset_for_predict = pd.concat([scaled_dataset, dataset["color"]], axis=1)
+random_dataset = dataset_numcols.apply(lambda x: np.random.uniform(min(x), max(x), len(x)))
+scaled_random_dataset = pd.DataFrame(scale(random_dataset))
+distance_matrix_dw = squareform(pdist(dataset_numcols)) ** 2
+distance_matrix_rdw = squareform(pdist(random_dataset)) ** 2
+
+
 def graph_missingness_matrix():
     msno.matrix(dataset)
 
-for c in dataset.columns:
-    if c != "good" and c != "color":
-        colHist = sns.histplot(data=dataset, x=c, hue="color", bins=75, kde=False,
-                               palette={"red": "red", "white": "white"})
-        colHist.set(title="Count of \"" + str(c) + "\" by color")
-        plt.show()
 
-for c in dataset.columns:
-    if c != "quality" and c != "good" and c != "color":
-        colHist = sns.barplot(data=dataset, x="quality", y=c, hue="color", palette={"red": "red", "white": "white"},
-                              edgecolor="black")
-        colHist.set(title=f"Distribution of \"{str(c)}\" by color")
-        plt.show()
-
-dataset_numcols = dataset.select_dtypes(include=[float, int])
-dataset_numcols
-
-correlation_matrix = dataset_numcols.corr()
-correlation_matrix
-
-mask = np.triu(np.ones_like(correlation_matrix, dtype=bool))
-cmap = sns.diverging_palette(230, 20, as_cmap=True)
-sns.heatmap(correlation_matrix, mask=mask, cmap=cmap, annot=True, fmt=".2f", center=0, cbar_kws={"shrink": .5})
-plt.title("Correlation Matrix")
-plt.show()
-
-dataset_numcols.drop(["good", "quality"], axis=1, inplace=True)
-scaled_dataset = pd.DataFrame(StandardScaler().fit_transform(dataset_numcols), columns=dataset_numcols.columns)
-
-scaled_dataset_for_predict = pd.concat([scaled_dataset, dataset["color"]], axis=1)
-
-km_dw_numcols = KMeans(n_clusters=2, n_init=20).fit(dataset_numcols)
-print(km_dw_numcols)
-
-pd.crosstab(km_dw_numcols.labels_, dataset['color'])
-
-pca = PCA(n_components=2)
-reduced_pca_componets = pca.fit_transform(scaled_dataset)
-
-plt.scatter(reduced_pca_componets[:, 0], reduced_pca_componets[:, 1], c=km_dw_numcols.labels_, cmap='viridis')
-plt.xlabel('Componente Principal 1')
-plt.ylabel('Componente Principal 2')
-plt.title('Análisis de Clústeres')
-plt.show()
-
-random_dataset = dataset_numcols.apply(lambda x: np.random.uniform(min(x), max(x), len(x)))
-random_dataset.head()
-
-scaled_random_dataset = pd.DataFrame(scale(random_dataset))
-
-scaled_dw_plot = PCA(n_components=2).fit_transform(scaled_dataset)
-scaled_rdw_plot = PCA(n_components=2).fit_transform(scaled_random_dataset)
-
-plt.subplot(2, 1, 1)
-plt.scatter(scaled_dw_plot[:, 0], scaled_dw_plot[:, 1], c=dataset["color"])
-plt.title("PCA - Wine Quality Data")
-plt.subplot(2, 1, 2)
-plt.scatter(scaled_rdw_plot[:, 0], scaled_rdw_plot[:, 1], c=dataset["color"])
-plt.title("PCA - Random Data")
-plt.tight_layout()
-plt.show()
+def generate_all_histograms():
+    for c in dataset.columns:
+        if c != "good" and c != "color":
+            colHist = sns.histplot(data=dataset, x=c, hue="color", bins=75, kde=False,
+                                   palette={"red": "red", "white": "white"})
+            colHist.set(title="Count of \"" + str(c) + "\" by color")
+            plt.show()
 
 
-hclust_dw = linkage(squareform(pdist(dataset_numcols)) ** 2, method='ward')
+def generate_all_barplots():
+    for c in dataset.columns:
+        if c != "quality" and c != "good" and c != "color":
+            colHist = sns.barplot(data=dataset, x="quality", y=c, hue="color", palette={"red": "red", "white": "white"},
+                                  edgecolor="black")
+            colHist.set(title=f"Distribution of \"{str(c)}\" by color")
+            plt.show()
 
-hclust_rdw = linkage(squareform(pdist(random_dataset)) ** 2, method='ward')
 
-plt.subplot(2, 1, 1)
-dend_dw = dendrogram(hclust_dw, no_labels=True)
-plt.title("Hierarchical Clustering - Wine Quality Data")
+def graph_correlation_matrix():
+    mask = np.triu(np.ones_like(correlation_matrix, dtype=bool))
+    cmap = sns.diverging_palette(230, 20, as_cmap=True)
+    sns.heatmap(correlation_matrix, mask=mask, cmap=cmap, annot=True, fmt=".2f", center=0, cbar_kws={"shrink": .5})
+    plt.title("Correlation Matrix")
+    plt.show()
 
-plt.subplot(2, 1, 2)
-dend_rdw = dendrogram(hclust_rdw, no_labels=True)
-plt.title("Hierarchical Clustering - Random Data")
 
-plt.tight_layout()
-plt.show()
+def pca_graph():
+    pca = PCA(n_components=2)
+    reduced_pca_components = pca.fit_transform(scaled_dataset)
+    plt.scatter(reduced_pca_components[:, 0], reduced_pca_components[:, 1], c=km_dw_numcols.labels_, cmap='viridis')
+    plt.xlabel('Componente Principal 1')
+    plt.ylabel('Componente Principal 2')
+    plt.title('Análisis de Clústeres')
+    plt.show()
+
+
+def scatter_graph():
+    scaled_dw_plot = PCA(n_components=2).fit_transform(scaled_dataset)
+    scaled_rdw_plot = PCA(n_components=2).fit_transform(scaled_random_dataset)
+
+    plt.subplot(2, 1, 1)
+    plt.scatter(scaled_dw_plot[:, 0], scaled_dw_plot[:, 1], c=dataset["color"])
+    plt.title("PCA - Wine Quality Data")
+    plt.subplot(2, 1, 2)
+    plt.scatter(scaled_rdw_plot[:, 0], scaled_rdw_plot[:, 1], c=dataset["color"])
+    plt.title("PCA - Random Data")
+    plt.tight_layout()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+
+    base64_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    return StreamingResponse(BytesIO(base64.b64decode(base64_image)), media_type='image/png')
+
+
+def hierarchical_graph():
+    hclust_dw = linkage(distance_matrix_dw, method='ward')
+
+    hclust_rdw = linkage(distance_matrix_rdw, method='ward')
+
+    plt.subplot(2, 1, 1)
+    dend_dw = dendrogram(hclust_dw, no_labels=True)
+    plt.title("Hierarchical Clustering - Wine Quality Data")
+
+    plt.subplot(2, 1, 2)
+    dend_rdw = dendrogram(hclust_rdw, no_labels=True)
+    plt.title("Hierarchical Clustering - Random Data")
+
+    plt.tight_layout()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+
+    base64_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    return StreamingResponse(BytesIO(base64.b64decode(base64_image)), media_type='image/png')
 
 
 def hopkins(data):
@@ -116,15 +130,12 @@ def hopkins(data):
     return hopkins_statistic
 
 
-hop_stat_dw = hopkins(scaled_dataset)
-print("Hopkins Statistic - Wine Quality Data:", hop_stat_dw)
+def perform_hopkin_statistic():
+    hop_stat_dw = hopkins(scaled_dataset)
+    print("Hopkins Statistic - Wine Quality Data:", hop_stat_dw)
 
-hop_stat_rdw = hopkins(scaled_random_dataset)
-print("Hopkins Statistic - Random Data:", hop_stat_rdw)
-
-silhouette_dw = silhouette_samples(distance_matrix_dw, km_dw_numcols.labels_)
-silhouette_avg_dw = silhouette_score(distance_matrix_dw, km_dw_numcols.labels_)
-print("Average Silhouette Score - Wine Quality Data:", silhouette_avg_dw)
+    hop_stat_rdw = hopkins(scaled_random_dataset)
+    print("Hopkins Statistic - Random Data:", hop_stat_rdw)
 
 
 def graph_elbow():
@@ -138,10 +149,17 @@ def graph_elbow():
     plt.title('The Elbow Method')
     plt.xlabel('Number of clusters')
     plt.ylabel('WCSS')
-    plt.show()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+
+    base64_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    return StreamingResponse(BytesIO(base64.b64decode(base64_image)), media_type='image/png')
 
 
 def graph_silhouette():
+    silhouette_dw = silhouette_samples(distance_matrix_dw, km_dw_numcols.labels_)
+    silhouette_avg_dw = silhouette_score(distance_matrix_dw, km_dw_numcols.labels_)
+    print("Average Silhouette Score - Wine Quality Data:", silhouette_avg_dw)
     n_clusters = len(np.unique(km_dw_numcols.labels_))
     y_lower = 10
     fig, ax = plt.subplots()
@@ -162,4 +180,8 @@ def graph_silhouette():
     ax.axvline(x=silhouette_avg_dw, color="red", linestyle="--")
     ax.set_yticks([])
     plt.title("Silhouette Analysis - Wine Quality Data")
-    plt.show()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+
+    base64_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    return StreamingResponse(BytesIO(base64.b64decode(base64_image)), media_type='image/png')

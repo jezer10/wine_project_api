@@ -3,19 +3,7 @@ import pandas as pd
 from models import decision_tree, random_forest, support_vector_machine
 
 
-@pd.api.extensions.register_dataframe_accessor("utilities")
-class UtilitiesAccessor():
-    def __init__(self, _obj):
-        self._validate(_obj)
-        self._obj = _obj
 
-    def capitalize(self):
-        self.rename(
-            columns=lambda x: x.split()[0] + ''.join(word.capitalize() for word in x.split()[1:])
-        )
-
-    def numeric(self):
-        self.select_dtypes(include=[float, int])
 
 
 def scale_wines_dataset(data):
