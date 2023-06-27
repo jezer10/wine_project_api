@@ -12,6 +12,10 @@ templates = Jinja2Templates(directory="templates",
 
 
 @app.get('/graph/scatter')
+async def greetings():
+    return "Hello World!"
+
+@app.get('/graph/scatter')
 async def generate_scatter_graph():
     return scatter_graph()
 
