@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from prediction_models import predict_by_tree_model, predict_by_svm, predict_by_random_forest
-from analysis_secuence import graph_elbow, hierarchical_graph, scatter_graph
+from analysis_secuence import graph_elbow, hierarchical_graph, scatter_graph, pca_graph
 import uvicorn
 from wine_dto import WinesDTO
 
@@ -14,6 +14,12 @@ templates = Jinja2Templates(directory="templates",
 @app.get('/')
 async def greetings():
     return "Hello World!"
+
+
+@app.get('/graph/pca')
+async def generate_scatter_graph():
+    return scatter_graph()
+
 
 @app.get('/graph/scatter')
 async def generate_scatter_graph():
@@ -39,6 +45,7 @@ async def predict_tree(wines: WinesDTO):
 @app.get("/predict/forest")
 async def predict_tree(wines: WinesDTO):
     return predict_by_random_forest(wines)
+
 
 
 if __name__ == "__main__":

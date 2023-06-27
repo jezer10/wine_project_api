@@ -76,23 +76,27 @@ def pca_graph():
     plt.xlabel('Componente Principal 1')
     plt.ylabel('Componente Principal 2')
     plt.title('Análisis de Clústeres')
-    plt.show()
-
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+    base64_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    return StreamingResponse(BytesIO(base64.b64decode(base64_image)), media_type='image/png')
 
 def scatter_graph():
     scaled_dw_plot = PCA(n_components=2).fit_transform(scaled_dataset)
-    scaled_rdw_plot = PCA(n_components=2).fit_transform(scaled_random_dataset)
-
-    plt.subplot(2, 1, 1)
     plt.scatter(scaled_dw_plot[:, 0], scaled_dw_plot[:, 1], c=dataset["color"])
     plt.title("PCA - Wine Quality Data")
-    plt.subplot(2, 1, 2)
-    plt.scatter(scaled_rdw_plot[:, 0], scaled_rdw_plot[:, 1], c=dataset["color"])
-    plt.title("PCA - Random Data")
-    plt.tight_layout()
     plt.savefig(buffer, format='png')
     buffer.seek(0)
+    base64_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    return StreamingResponse(BytesIO(base64.b64decode(base64_image)), media_type='image/png')
 
+
+def scatter_random_graph():
+    scaled_rdw_plot = PCA(n_components=2).fit_transform(scaled_random_dataset)
+    plt.scatter(scaled_rdw_plot[:, 0], scaled_rdw_plot[:, 1], c=dataset["color"])
+    plt.title("PCA - Random Data")
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
     base64_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
     return StreamingResponse(BytesIO(base64.b64decode(base64_image)), media_type='image/png')
 
