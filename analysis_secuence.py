@@ -12,7 +12,7 @@ from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, dendrogram
 from io import BytesIO
 import base64
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse,Response
 from sklearn.metrics import silhouette_samples, silhouette_score, classification_report, confusion_matrix, \
     ConfusionMatrixDisplay
 
@@ -76,10 +76,11 @@ def pca_graph():
     plt.xlabel('Componente Principal 1')
     plt.ylabel('Componente Principal 2')
     plt.title('Análisis de Clústeres')
-    plt.savefig(buffer, format='png')
+    plt.savefig(buffer, format='svg')
     buffer.seek(0)
-    base64_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
-    return StreamingResponse(BytesIO(base64.b64decode(base64_image)), media_type='image/png')
+    response = Response(content=buffer.getvalue(), media_type='image/svg+xml')
+    response.headers['Content-Disposition'] = 'attachment; filename=plot.svg'
+    return response
 
 def scatter_graph():
     scaled_dw_plot = PCA(n_components=2).fit_transform(scaled_dataset)

@@ -18,7 +18,7 @@ async def greetings():
 
 @app.get('/graph/pca')
 async def generate_scatter_graph():
-    return scatter_graph()
+    return pca_graph()
 
 
 @app.get('/graph/scatter')
