@@ -12,8 +12,13 @@ def scale_wines_dataset(data):
 
 def predict_by_tree_model(data):
     scaled_wines_dataset = scale_wines_dataset(data)
-    predictions = decision_tree.model.predict(scaled_wines_dataset)
-    return predictions.tolist()
+    predictions = decision_tree.model.predict(scaled_wines_dataset).tolist()
+    pr_ob = {
+        "quality":predictions[0],
+        "state":predictions[1],
+        "color":predictions[2]
+    }
+    return
 
 
 def predict_by_svm(data):
