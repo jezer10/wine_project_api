@@ -49,8 +49,7 @@ def get_dataset_mean():
         component_values = []
         for i in range(n_components):
             component_values.append(principal_components[i][j])
-        print(results.keys()[np.argmax(component_values)])
-        results['ia'].append({
+        results[list(results.keys())[np.argmax(component_values)]].append({
             'name': component,
             'max': dataset[component].max().round(2),
             'min': dataset[component].min().round(2),
@@ -74,11 +73,3 @@ def get_numeric_dataset(color: str = None):
     return results
 
 
-def get_components_by_color():
-    cleaned_dataset = dataset[dataset['color'] == 'white'].utilities.numeric()
-    cleaned_dataset.drop(["good", "quality"], axis=1, inplace=True)
-    pzas = PCA().fit(StandardScaler().fit_transform(cleaned_dataset))
-    print(pzas.components_)
-
-
-get_components_by_color()
