@@ -1,7 +1,9 @@
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
-import json
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+import numpy as np
 
 
 @pd.api.extensions.register_dataframe_accessor("utilities")
@@ -19,7 +21,6 @@ class UtilitiesAccessor:
 
 
 dataset = pd.read_csv("data/wine_quality.csv").utilities.capitalize()
-print(dataset.min(), dataset.max())
 dataset_numeric_columns = dataset.utilities.numeric()
 
 dataset_numeric_columns.drop(["good", "quality"], axis=1, inplace=True)
@@ -35,6 +36,30 @@ y = pd.concat([dataset[["quality", "good"]], dataset["color"].replace({"red": 0,
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
 
 
+def get_dataset_mean():
+    n_components = 2
+    pca = PCA(n_components=n_components)
+    pca.fit(scaled_dataset)
+    principal_components = pca.components_
+    results = {
+        'white': [],
+        'red': []
+    }
+    for j, component in enumerate(scaled_dataset.columns):
+        component_values = []
+        for i in range(n_components):
+            component_values.append(principal_components[i][j])
+        print(results.keys()[np.argmax(component_values)])
+        results['ia'].append({
+            'name': component,
+            'max': dataset[component].max().round(2),
+            'min': dataset[component].min().round(2),
+            'avg': dataset[component].mean().round(2),
+        })
+
+    return results
+
+
 def get_numeric_dataset(color: str = None):
     results = {}
     filtered_dataset = dataset[dataset["color"] == color] if color in ("white", "red") else dataset
@@ -47,3 +72,13 @@ def get_numeric_dataset(color: str = None):
             'average': ds_cl[column].mean().round(2)
         }
     return results
+
+
+def get_components_by_color():
+    cleaned_dataset = dataset[dataset['color'] == 'white'].utilities.numeric()
+    cleaned_dataset.drop(["good", "quality"], axis=1, inplace=True)
+    pzas = PCA().fit(StandardScaler().fit_transform(cleaned_dataset))
+    print(pzas.components_)
+
+
+get_components_by_color()

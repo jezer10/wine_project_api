@@ -13,7 +13,7 @@ from analysis_secuence import graph_elbow, \
 import uvicorn
 from wine_dto import WinesDTO
 
-from models.load_dataset import  get_numeric_dataset
+from models.load_dataset import get_numeric_dataset, get_dataset_mean
 
 app = FastAPI()
 app.add_middleware(
@@ -51,8 +51,13 @@ async def greetings():
     return "Hello World!"
 
 
+@app.get('/profile')
+async def get_dataset_profile():
+    return get_dataset_mean()
+
+
 @app.get("/graph/bar")
-async def generate_barplot_graph(column: str):
+async def generate_bar_plot_graph(column: str):
     return barplot_graph(column)
 
 

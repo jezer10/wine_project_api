@@ -9,14 +9,13 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import scale
 from scipy.spatial.distance import pdist, squareform
-# from scipy.cluster.hierarchy import linkage, dendrogram
+from scipy.cluster.hierarchy import linkage, dendrogram
 from io import BytesIO
 import base64
 from fastapi.responses import StreamingResponse, Response
 from sklearn.metrics import silhouette_samples, silhouette_score
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from sklearn.datasets import load_wine
-
 
 sns.set(
     rc={
@@ -25,8 +24,6 @@ sns.set(
 )
 
 sns.set_style("whitegrid")
-
-
 
 correlation_matrix = dataset_numeric_columns.corr()
 km_dw_numeric_columns = KMeans(n_clusters=2, n_init=20).fit(dataset_numeric_columns)
@@ -47,7 +44,8 @@ def missing_matrix_graph():
 def histogram_graph(column: str):
     if column != "good" and column != "color":
         fig, ax = plt.subplots()
-        column_histogram = sns.histplot(data=dataset, x=column, hue="color", bins=75, kde=False, palette={"red": "red", "white": "white"}, ax=ax)
+        column_histogram = sns.histplot(data=dataset, x=column, hue="color", bins=75, kde=False,
+                                        palette={"red": "red", "white": "white"}, ax=ax)
         column_histogram.set(title="Count of \"" + str(column) + "\" by color")
         buffer = BytesIO()
         plt.savefig(buffer, format="png")
@@ -59,7 +57,8 @@ def histogram_graph(column: str):
 def barplot_graph(column: str):
     if column != "quality" and column != "good" and column != "color":
         fig, ax = plt.subplots()
-        column_histogram = sns.barplot(data=dataset, x="quality", y=column, hue="color", palette={"red": "red", "white": "white"}, edgecolor="black", ax=ax)
+        column_histogram = sns.barplot(data=dataset, x="quality", y=column, hue="color",
+                                       palette={"red": "red", "white": "white"}, edgecolor="black", ax=ax)
         column_histogram.set(title=f"Distribution of \"{str(column)}\" by color")
         buffer = BytesIO()
         plt.savefig(buffer, format="png")
@@ -78,10 +77,11 @@ def graph_correlation_matrix():
 def pca_graph():
     pca = PCA(n_components=2)
     reduced_pca_components = pca.fit_transform(scaled_dataset)
+    print(reduced_pca_components.shape)
     fig, ax = plt.subplots()
     ax.scatter(reduced_pca_components[:, 0],
                reduced_pca_components[:, 1],
-               c=km_dw_numeric_columns.labels_, 
+               c=km_dw_numeric_columns.labels_,
                cmap='viridis')
     ax.set_xlabel('Principal Component 1')
     ax.set_ylabel('Principal Component 2')
