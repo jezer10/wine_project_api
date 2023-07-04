@@ -1,3 +1,7 @@
+import io
+from openpyxl import load_workbook
+import pandas as pd
+from models.load_dataset import dataset_numeric_columns
 from fastapi import FastAPI, Request, Response, UploadFile, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,7 +12,7 @@ from analysis_secuence import graph_elbow, \
     silhouette_graph, \
     missing_matrix_graph, \
     histogram_graph, \
-    barplot_graph,\
+    barplot_graph, \
     get_dataset_columns
 import uvicorn
 from wine_dto import WinesDTO
@@ -41,9 +45,14 @@ async def get_summary():
 async def upload_file(file: UploadFile):
     filename = file.filename
     file_extension = filename.split(".")[-1]
-    if file_extension not in ['.xlsx', '.xls', '.csv']:
+    if file_extension not in ['xlsx', 'xls', 'csv']:
         raise HTTPException(status_code=400, detail="Tipo de archivo no permitido.")
-    return {"filename": filename}
+    buffer = io.BytesIO(await file.read())
+    df = (pd.read_csv(buffer) if file_extension == "csv" else pd.read_excel(buffer)).utilities.capitalize()
+
+    if not all(c in dataset_numeric_columns.columns for c in df.columns):
+        raise HTTPException(status_code=400, detail="Columnas Invalidas")
+    return df.to_dict(orient="records")[0]
 
 
 @app.get('/')
@@ -114,6 +123,7 @@ async def predict_tree(wines: WinesDTO):
 @app.get("/columns")
 async def get_columns():
     return get_dataset_columns()
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", port=5000, log_level="info", host="0.0.0.0")
