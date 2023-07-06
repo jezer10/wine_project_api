@@ -1,3 +1,5 @@
+#GENERACION DE GRAFICOS
+
 from models.load_dataset import dataset, dataset_numeric_columns, scaled_dataset
 import pandas as pd
 import missingno

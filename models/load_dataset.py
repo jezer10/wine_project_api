@@ -1,3 +1,4 @@
+# USO DE PCA PARA DETERMINAR IMPORTANCIA DE VARIABLES
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split

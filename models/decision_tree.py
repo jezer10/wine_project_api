@@ -1,17 +1,11 @@
-from models.load_dataset import X, X_train, y_train
+# USO DE METODO DE AGRUPACION PARA LA PREDICCION DE VARIABLES
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
 import graphviz
+import pandas as pd
 
-from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
+dataset_wine = pd.read_csv("data/wine_quality.csv")
 
-model = DecisionTreeClassifier(criterion="gini", random_state=42)
-model.fit(X_train, y_train)
 
-print(
-    f"Loaded Decisión Tree Model\n"
-    f"Depth: {model.get_depth()}\n"
-    f"Leaves N: {model.get_n_leaves()}"
-)
 
 
 def graph_model():
